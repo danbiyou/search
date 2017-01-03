@@ -23,107 +23,8 @@ import org.springframework.boot.context.embedded.ServletRegistrationBean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import com.kdtree.*;
 
-
-
-class KDNode{
-    KDNode left;
-    KDNode right;
-    double []data;
-
-    public KDNode(){
-        left=null;
-        right=null;
-    }
-
-    public KDNode(double []x){
-        left=null;
-        right=null;
-        data = new double[2];
-        for (int k = 0; k < 2; k++)
-            data[k]=x[k];
-    }
-}
-class KDTreeImpl{
-    KDNode root;
-    int cd=0;
-    int DIM=2;
-
-    public KDTreeImpl() {
-        root=null;
-    }
-
-    public boolean isEmpty(){
-        return root == null;
-    }
-
-    public void insert(double []x){
-        root = insert(x,root,cd);
-    }
-    private KDNode insert(double []x,KDNode t,int cd){
-        if (t == null)
-            t = new KDNode(x);
-        else if (x[cd] < t.data[cd])
-            t.left = insert(x, t.left, (cd+1)%DIM);
-        else
-            t.right = insert(x, t.right, (cd+1)%DIM);
-        return t;
-    }
-
-    public boolean search(int []data){
-        return search(data,root,0);
-    }
-
-    private boolean search(int []x,KDNode t,int cd){
-        boolean found=false;
-        if(t==null){
-            return false;
-        }
-        else {
-            if(x[cd]==t.data[cd]){
-                if(x[0]==t.data[0] && x[1]==t.data[1]) 
-                return true;
-            }else if(x[cd]<t.data[cd]){
-                found = search(x,t.left,(cd+1)%DIM);
-            }else if(x[cd]>t.data[cd]){
-                found = search(x,t.right,(cd+1)%DIM);
-            }
-            return found;
-        }
-    }
-
-    public void inorder(){
-        inorder(root);
-    }
-    private void inorder(KDNode r){
-        if (r != null){
-            inorder(r.left);
-            System.out.print("("+r.data[0]+","+r.data[1] +") ");
-            inorder(r.right);
-        }
-    }
-    public void preorder() {
-        preorder(root);
-    }
-    private void preorder(KDNode r){
-        if (r != null){
-            System.out.print("("+r.data[0]+","+r.data[1] +") ");
-            preorder(r.left);             
-            preorder(r.right);
-        }
-    }
-    /* Function for postorder traversal */
-    public void postorder() {
-        postorder(root);
-    }
-    private void postorder(KDNode r) {
-        if (r != null){
-            postorder(r.left);             
-            postorder(r.right);
-            System.out.print("("+r.data[0]+","+r.data[1] +") ");
-        }
-    }
-}
 
 
 /**
@@ -133,24 +34,53 @@ class KDTreeImpl{
 public class Example {
 
 	@RequestMapping("/search")
-	String search(Model model, @RequestParam(value = "long1", required = false, defaultValue = "World") String long1,
-			@RequestParam(value = "long2", required = false, defaultValue = "World") String long2,
-			@RequestParam(value = "lat1", required = false, defaultValue = "World") String lat1,
-			@RequestParam(value = "lat2", required = false, defaultValue = "World") String lat2) {
+	String search(Model model, @RequestParam(value = "long1", required = false, defaultValue = "127") String long1,
+			@RequestParam(value = "long2", required = false, defaultValue = "128") String long2,
+			@RequestParam(value = "lat1", required = false, defaultValue = "35") String lat1,
+			@RequestParam(value = "lat2", required = false, defaultValue = "36") String lat2) {
+		
 		model.addAttribute("long1", long1);
 		model.addAttribute("long2", long2);
 		model.addAttribute("lat1", lat1);
 		model.addAttribute("lat2", lat2);
-
+		List<Map> list = null;
 		try {
-			List list = initDB();
-			System.out.println(list.size());
-			model.addAttribute("poiList",list);
+			list = getData();
+			System.out.println("data size = " + list.size());
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		// database connection
+
+		Tree tree = new Tree();
+		double x[] = new double[2];
+		
+		// tree insert
+		String name, longitude, latitude;
+		for (Map m : list) {
+			name = (String) m.get("name");
+			longitude = (String) m.get("longitude");
+			latitude = (String) m.get("latitude");
+
+			if (!longitude.equals("") && !latitude.equals("") && longitude != null && latitude != null) {
+				x[0] = Double.parseDouble(longitude);
+				x[1] = Double.parseDouble(latitude);
+				tree.insert(new Node(name,x));
+				//tree.inorder();
+			}
+		}
+		
+		// tree range search
+		 //List<Map<String, String>> result = tree.rangeSearch(new Rectangle(128.57,128.578,36.55,36.581));
+		 List<Map<String, String>> result = tree.rangeSearch(new Rectangle(string2Double(long1),string2Double(long2),string2Double(lat1),string2Double(lat2)));
+		System.out.println("size)"+result.size());
+		for(Map<String,String> m:result){
+			//System.out.println(n.name +","+n.data[0]+","+n.data[1]);
+			System.out.println(m.get("name")+", "+m.get("longitude")+m.get("latitude"));
+		}
+		
+		
+		model.addAttribute("poiList", result);
+
 		return "search";
 	}
 
@@ -161,6 +91,9 @@ public class Example {
 		return registrationBean;
 	}
 
+	public static double string2Double(String str){
+		return Double.parseDouble(str);
+	}
 	public static void main(String[] args) throws Exception {
 		SpringApplication.run(Example.class, args);
 	}
@@ -178,51 +111,39 @@ public class Example {
 		return dbConnection;
 	}
 
-	private static List<Map> initDB() throws SQLException  {
-			List<Map> list = new ArrayList<Map>();
-	        Connection connection = getDBConnection();
-	        Statement stmt = null;
-	        try {
-	            connection.setAutoCommit(false);
-	            stmt = connection.createStatement();
+	private static List<Map> getData() throws SQLException  {
+		List<Map> list = new ArrayList<Map>();
+		Connection connection = getDBConnection();
+		Statement stmt = null;
+		try {
+			connection.setAutoCommit(false);
+			stmt = connection.createStatement();
 
-	            // create TEST_TABLE for example
-	            //stmt.execute("CREATE TABLE TEST_TABLE(idx INT PRIMARY KEY, name VARCHAR(100));");
+            // create TEST_TABLE for example
+            //stmt.execute("CREATE TABLE TEST_TABLE(idx INT PRIMARY KEY, name VARCHAR(100));");
+            
+            // insert some values into TEST_TABLE
+            //stmt.execute("INSERT INTO TEST_TABLE VALUES(1, 'Martin.Park'), (2, 'OskarDevelopers');");
+             
+            // get result by using SELECT query
+            ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL;");
+            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL LIMIT 10000;");
+            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128 AND CAST(LONGITUDE AS DOUBLE)<129AND CAST(LATITUDE AS DOUBLE)>36 AND CAST(LATITUDE AS DOUBLE)<37");
+            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128.5 AND CAST(LONGITUDE AS DOUBLE)<128.6 AND CAST(LATITUDE AS DOUBLE)>36.5 AND CAST(LATITUDE AS DOUBLE)<36.6");
+	         
+
+			Map<String, String> map = null;
 	            
-	            // insert some values into TEST_TABLE
-	            //stmt.execute("INSERT INTO TEST_TABLE VALUES(1, 'Martin.Park'), (2, 'OskarDevelopers');");
-	             
-	            // get result by using SELECT query
-	            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL LIMIT 10000;");
-	            ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128 AND CAST(LONGITUDE AS DOUBLE)<129AND CAST(LATITUDE AS DOUBLE)>36 AND CAST(LATITUDE AS DOUBLE)<37");
-	            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128.5 AND CAST(LONGITUDE AS DOUBLE)<128.6 AND CAST(LATITUDE AS DOUBLE)>36.5 AND CAST(LATITUDE AS DOUBLE)<36.6");
-	            int i=0;
-	            
-	            KDTreeImpl kdt = new KDTreeImpl();
-	            double x[] = new double[2];
-	           
-	            
-	            Map<String, String> map = null;
-	            
-	            while (rs.next()) {
-	               System.out.println( (i++)+ ") name : " + rs.getString("name") + " / " + "longitude : " + rs.getString("longitude") + " / " + "longitude : " + rs.getString("latitude"));
-	            	String name = rs.getString("name");
-	                String longitude = rs.getString("longitude");
-	                String latitude = rs.getString("latitude");
-	                if(longitude!="" &&latitude!="" &&longitude!=null  &&latitude!=null){
-	                	x[0] = Double.parseDouble(longitude);
-	                	x[1] =  Double.parseDouble(latitude);
-	                	kdt.insert(x);
-	                	//kdt.inorder();
-		            }
+			while (rs.next()) {
+				//System.out.println((i++) + ") name : " + rs.getString("name") + " / " + "longitude : "+ rs.getString("longitude") + " / " + "longitude : " + rs.getString("latitude"));
 
 				map = new HashMap<String, String>();
-				map.put("name", name);
-				map.put("longitude", longitude);
-				map.put("latitude", latitude);
+				map.put("name", rs.getString("name"));
+				map.put("longitude", rs.getString("longitude"));
+				map.put("latitude", rs.getString("latitude"));
 				list.add(map);
-
-	            }
+			}
+			
 	            System.out.println("done");
 	            stmt.close();
 	            connection.commit();
