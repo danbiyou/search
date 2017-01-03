@@ -13,6 +13,10 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.h2.server.web.WebServlet;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
@@ -139,7 +143,9 @@ public class Example {
 		model.addAttribute("lat2", lat2);
 
 		try {
-			initDB();
+			List list = initDB();
+			System.out.println(list.size());
+			model.addAttribute("poiList",list);
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -172,7 +178,8 @@ public class Example {
 		return dbConnection;
 	}
 
-	private static void initDB() throws SQLException  {
+	private static List<Map> initDB() throws SQLException  {
+			List<Map> list = new ArrayList<Map>();
 	        Connection connection = getDBConnection();
 	        Statement stmt = null;
 	        try {
@@ -186,24 +193,35 @@ public class Example {
 	            //stmt.execute("INSERT INTO TEST_TABLE VALUES(1, 'Martin.Park'), (2, 'OskarDevelopers');");
 	             
 	            // get result by using SELECT query
-	            ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET ;");
+	            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL LIMIT 10000;");
+	            ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128 AND CAST(LONGITUDE AS DOUBLE)<129AND CAST(LATITUDE AS DOUBLE)>36 AND CAST(LATITUDE AS DOUBLE)<37");
+	            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128.5 AND CAST(LONGITUDE AS DOUBLE)<128.6 AND CAST(LATITUDE AS DOUBLE)>36.5 AND CAST(LATITUDE AS DOUBLE)<36.6");
 	            int i=0;
 	            
 	            KDTreeImpl kdt = new KDTreeImpl();
 	            double x[] = new double[2];
 	           
 	            
+	            Map<String, String> map = null;
 	            
 	            while (rs.next()) {
-	               // System.out.println( (i++)+ ") name : " + rs.getString("name") + " / " + "longitude : " + rs.getString("longitude") + " / " + "longitude : " + rs.getString("latitude"));
+	               System.out.println( (i++)+ ") name : " + rs.getString("name") + " / " + "longitude : " + rs.getString("longitude") + " / " + "longitude : " + rs.getString("latitude"));
+	            	String name = rs.getString("name");
 	                String longitude = rs.getString("longitude");
 	                String latitude = rs.getString("latitude");
 	                if(longitude!="" &&latitude!="" &&longitude!=null  &&latitude!=null){
-	                	x[0] = Double.parseDouble(rs.getString("longitude"));
-	                	x[1] =  Double.parseDouble(rs.getString("latitude"));
+	                	x[0] = Double.parseDouble(longitude);
+	                	x[1] =  Double.parseDouble(latitude);
 	                	kdt.insert(x);
 	                	//kdt.inorder();
 		            }
+
+				map = new HashMap<String, String>();
+				map.put("name", name);
+				map.put("longitude", longitude);
+				map.put("latitude", latitude);
+				list.add(map);
+
 	            }
 	            System.out.println("done");
 	            stmt.close();
@@ -216,5 +234,7 @@ public class Example {
 	        } finally {
 	            connection.close();
 	        }
+	        
+	        return list;
 	}
 }

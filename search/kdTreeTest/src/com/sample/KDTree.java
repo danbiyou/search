@@ -1,9 +1,14 @@
 package com.sample;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 class KDNode{
     KDNode left;
     KDNode right;
     int []data;
+    int type; //vertical.even=0, else 1
 
     public KDNode(){
         left=null;
@@ -17,6 +22,15 @@ class KDNode{
         for (int k = 0; k < 2; k++)
             data[k]=x[k];
     }
+}
+class Rectangle{
+	int x1, x2, y1, y2;
+	public Rectangle(int a, int b, int c, int d) {
+		x1=a; x2=b; y1=c; y2=d;
+	}
+	boolean contain(int x, int y){
+		return (x1<=x&&x<=x2 &&y1<=y&&y<=y2);
+	}
 }
 class KDTreeImpl{
     KDNode root;
@@ -44,6 +58,40 @@ class KDTreeImpl{
         return t;
     }
 
+    
+    public List<int[]> rangeSearch(Rectangle r,int cd){
+    	return rangeSearch(root, r, cd);
+    }
+    public List<int[]> rangeSearch(KDNode t,Rectangle r,int cd){
+    	List<int[]> result = new ArrayList<int[]>();
+    	int left, right, median;
+    	if(cd%2==0) //even.vertical
+    	{
+    		left = r.x1; 
+    		right=r.x2;
+    		median = t.data[0];
+    	}
+    	else
+    	{
+    		left = r.y1; 
+    		right=r.y2;
+    		median = t.data[1];
+    	}
+        
+    	if((left<=median && median <=right) && r.contain(t.data[0], t.data[1]))
+    	{
+    		result.add(t.data);
+    	}
+    	
+    	if(t.left!=null &&left<median) result.addAll(rangeSearch(t.left, r, cd+1));
+    	if(t.right!=null &&right>median) result.addAll(rangeSearch(t.right, r, cd+1));
+    	
+    		
+    	return result;
+    		
+    }
+    
+    
     public boolean search(int []data){
         return search(data,root,0);
     }
@@ -137,5 +185,11 @@ public class KDTree {
         System.out.println("\nsearching...............");
         x[0]=40;x[1]=40;
         System.out.println(kdt.search(x));
+        
+        List<int[]> result = kdt.rangeSearch( new Rectangle(5,70,25,70), 0);
+        System.out.println(result.size());
+        for (int i=0;i <result.size();i++){
+        	System.out.println(result.get(i)[0]+","+result.get(i)[1]);
+        }
     }
 }
