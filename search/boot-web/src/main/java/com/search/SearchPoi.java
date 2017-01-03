@@ -1,12 +1,10 @@
-package com.example;
+package com.search;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -20,19 +18,26 @@ import java.util.Map;
 
 import org.h2.server.web.WebServlet;
 import org.springframework.boot.context.embedded.ServletRegistrationBean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import com.kdtree.*;
 
-
-
 /**
+ * @author yumin
+ *
  */
 @Controller
 @EnableAutoConfiguration
-public class Example {
+public class SearchPoi {
 
+	/**
+	 * @param model
+	 * @param long1
+	 * @param long2
+	 * @param lat1
+	 * @param lat2
+	 * @return
+	 */
 	@RequestMapping("/search")
 	String search(Model model, @RequestParam(value = "long1", required = false, defaultValue = "127") String long1,
 			@RequestParam(value = "long2", required = false, defaultValue = "128") String long2,
@@ -84,6 +89,10 @@ public class Example {
 		return "search";
 	}
 
+	/**
+	 * Makes database connection
+	 * @return
+	 */
 	@Bean
 	ServletRegistrationBean h2servletRegistration() {
 		ServletRegistrationBean registrationBean = new ServletRegistrationBean(new WebServlet());
@@ -91,13 +100,22 @@ public class Example {
 		return registrationBean;
 	}
 
+	/**
+	 * Converts String to Double
+	 * @param str
+	 * @return
+	 */
 	public static double string2Double(String str){
 		return Double.parseDouble(str);
 	}
 	public static void main(String[] args) throws Exception {
-		SpringApplication.run(Example.class, args);
+		SpringApplication.run(SearchPoi.class, args);
 	}
 
+	/**
+	 * Gets DB connection
+	 * @return db connection
+	 */
 	private static Connection getDBConnection() {
 		Connection dbConnection = null;
 		try {
@@ -111,6 +129,12 @@ public class Example {
 		return dbConnection;
 	}
 
+	
+	/**
+	 * Gets all toilet location data
+	 * @return
+	 * @throws SQLException
+	 */
 	private static List<Map> getData() throws SQLException  {
 		List<Map> list = new ArrayList<Map>();
 		Connection connection = getDBConnection();
@@ -119,35 +143,21 @@ public class Example {
 			connection.setAutoCommit(false);
 			stmt = connection.createStatement();
 
-            // create TEST_TABLE for example
-            //stmt.execute("CREATE TABLE TEST_TABLE(idx INT PRIMARY KEY, name VARCHAR(100));");
-            
-            // insert some values into TEST_TABLE
-            //stmt.execute("INSERT INTO TEST_TABLE VALUES(1, 'Martin.Park'), (2, 'OskarDevelopers');");
-             
-            // get result by using SELECT query
             ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL;");
             //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL LIMIT 10000;");
-            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128 AND CAST(LONGITUDE AS DOUBLE)<129AND CAST(LATITUDE AS DOUBLE)>36 AND CAST(LATITUDE AS DOUBLE)<37");
-            //ResultSet rs = stmt.executeQuery("SELECT * FROM TOILET WHERE LATITUDE IS NOT NULL AND LONGITUDE IS NOT NULL AND CAST(LONGITUDE AS DOUBLE)>128.5 AND CAST(LONGITUDE AS DOUBLE)<128.6 AND CAST(LATITUDE AS DOUBLE)>36.5 AND CAST(LATITUDE AS DOUBLE)<36.6");
-	         
 
 			Map<String, String> map = null;
 	            
 			while (rs.next()) {
 				//System.out.println((i++) + ") name : " + rs.getString("name") + " / " + "longitude : "+ rs.getString("longitude") + " / " + "longitude : " + rs.getString("latitude"));
-
 				map = new HashMap<String, String>();
 				map.put("name", rs.getString("name"));
 				map.put("longitude", rs.getString("longitude"));
 				map.put("latitude", rs.getString("latitude"));
 				list.add(map);
 			}
-			
-	            System.out.println("done");
 	            stmt.close();
 	            connection.commit();
-	            
 	        } catch (SQLException e) {
 	            System.out.println("Exception Message " + e.getLocalizedMessage());
 	        } catch (Exception e) {
